@@ -1,0 +1,78 @@
+import pandas as pd
+import streamlit as st
+import spotipy
+from spotipy.oauth2 import SpotifyClientCredentials
+from IPython.display import Audio, display
+
+# Step 1: Load the song dataset
+song_data = pd.read_csv("C:/Users/HP/Downloads/songs1.csv")  # Assuming you have a CSV file with song data
+
+# Add "Select All" as an additional mood option
+mood_options = ['Select All'] + list(song_data['mood'].unique())
+
+# Add "Select All" as an additional artist option
+artist_options = ['Select All'] + list(song_data['Album_Artist_Name'].unique())
+
+# Step 2: Authenticate with Spotify API
+# Replace 'YOUR_CLIENT_ID' and 'YOUR_CLIENT_SECRET' with your actual Spotify API credentials
+client_credentials_manager = SpotifyClientCredentials(client_id='d9142036689649469994a92f303e3d14',
+                                                    client_secret='560da956b464495780dd3d510dc966b8')
+sp = spotipy.Spotify(client_credentials_manager=client_credentials_manager)
+
+# Step 3: Define the function to recommend songs based on user input
+def recommend_songs(selected_mood, selected_artist):
+    # If "Select All" is chosen for mood or artist, show all songs without filtering
+    if selected_mood == 'Select All':
+        filtered_songs = song_data.copy()
+    else:
+        filtered_songs = song_data[song_data['mood'] == selected_mood]
+
+    if selected_artist != 'Select All':
+        filtered_songs = filtered_songs[filtered_songs['Album_Artist_Name'] == selected_artist]
+
+    # Display the recommended songs and create the playlist
+    playlist = []
+    for index, song in filtered_songs.iterrows():
+        st.image(song['Album_Image_URL'], width=100)
+        st.write("Song Name:", song['song_name'])
+        st.write("Artist Name:", song['artist_name'])
+        st.write("Mood:", song['mood'])
+        st.write("Popularity:", song['popularity'])
+
+        # Get the album URL from the Spotify Web API
+        result = sp.search(q=f"{song['song_name']} {song['artist_name']}", type='album')
+        albums = result['albums']['items']
+        if albums:
+            album_url = albums[0]['external_urls']['spotify']
+            playlist.append(album_url)
+
+            # Display the song image and play button
+            st.write("Album URL:", album_url)
+            st.write("---------------------")
+            # display(Audio(song['Album_URI'], autoplay=False))
+
+    return playlist
+
+# Step 4: Create the Streamlit web app
+st.set_page_config(
+    page_title="The Magic of NLP in Songs Recommendation",
+    page_icon=":notes:",
+    layout="centered",
+    initial_sidebar_state="expanded",
+)
+
+# Center the title
+st.title("The Magic of NLP in Songs Recommendation")
+
+# Create an empty slot for the "Recommend Songs" button
+st.empty()
+
+# Create the dropdown menus
+selected_mood = st.selectbox("Select Mood", mood_options)
+selected_artist = st.selectbox("Select Album Artist Name", artist_options)
+
+# Create the "Recommend" button
+if st.button("Recommend Songs"):
+    playlist = recommend_songs(selected_mood, selected_artist)
+
+
